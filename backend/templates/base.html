@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}SecureDevOps Lab{% endblock %}</title>
+    <style>
+      body { font-family: system-ui, Arial; max-width: 720px; margin: 40px auto; }
+      .nav a { margin-right: 12px; }
+      .flash { padding: 8px 12px; margin: 12px 0; border-radius: 6px; }
+      .flash.success { background: #e7f7ee; }
+      .flash.error { background: #fdecea; }
+      form input { padding: 6px 8px; margin: 6px 0; width: 100%; max-width: 320px; }
+      form button { padding: 8px 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="nav">
+      <a href="{{ url_for('home') }}">Home</a>
+      <a href="{{ url_for('login') }}">Login</a>
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </body>
+</html>
