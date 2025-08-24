@@ -55,7 +55,71 @@ UPDATE users SET role='admin' WHERE username='Yogita';
 
 SELECT id, username, role FROM users WHERE username='Yogita';
 
+//SQLI
 
+mkdir -p backend/logs
+# (optional) keep empty dir in git later:
+touch backend/logs/.gitkeep
+
+• The safe /login uses parameterized SQL + hashed passwords (correct).
+• The vulnerable /vuln_login concatenates strings (for the lab only).
+• Set SHOW_VULN=0 (env var) to make /vuln_login return 404 when you’re done with the demo.
+Go to http://127.0.0.1:5003/vuln_login
+
+Try these payloads:
+
+A) Bypass with always-true condition (MySQL)
+
+Username:
+
+' OR 1=1#
+
+
+Password: anything
+
+# starts a comment in MySQL, so the password check is ignored.
+The SQL becomes:
+
+SELECT * FROM users
+WHERE username='' OR 1=1#' AND password='anything'
+
+
+1=1 is always true → returns the first row → you’re “logged in”.
+
+B) Another variant (requires a space after --)
+
+Username:
+
+' OR '1'='1' -- 
+
+
+(there’s a trailing space after -- which MySQL requires)
+
+Password: anything
+
+4) Check your security logs
+# from project root or backend/
+tail -f backend/logs/security.log
+# or
+cat backend/logs/security.log
+
+5) Verify the safe login still works
+
+Register a normal user (if you haven’t already): http://127.0.0.1:5003/register
+
+Login via /login (safe) → should succeed with real credentials.
+
+Try the same SQLi payload on /login — it should NOT bypass.
+
+6) Hide the vulnerable route outside the lab
+
+When you’re done experimenting, disable it without changing code:
+
+export SHOW_VULN=0
+python app.py
+
+
+Now hitting /vuln_login returns 404.
 
 
 
