@@ -34,5 +34,30 @@ source ~/.venvs/sdops/bin/activate
 pip install mysql-connector-python werkzeug
 
 
+ALTER TABLE users 
+    MODIFY role VARCHAR(20) NOT NULL DEFAULT 'user';
+
+
+
+//RBAC
+
+mysql -u secuser -p
+USE securedevops;
+DESC users;
+-- should show: id, username, password, role
+EXIT;
+
+
+USE securedevops;
+SELECT id, username, role FROM users;
+
+UPDATE users SET role='admin' WHERE username='Yogita';
+
+SELECT id, username, role FROM users WHERE username='Yogita';
+
+
+
+
+
 
 

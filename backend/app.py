@@ -1,79 +1,117 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
+import os
 import mysql.connector
+from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"  # needed for flash messages & sessions
+# use env var in real deployments
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-secret")
 
-# Database connection
+# ---- DB connection (simple for dev) ----
 db = mysql.connector.connect(
     host="localhost",
     user="secuser",
-    password="12345678",  # use the same password you set
+    password="12345678",   # <-- your actual DB password
     database="securedevops"
 )
 cursor = db.cursor(dictionary=True)
 
+# ---- decorators for auth / roles ----
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if 'username' not in session:
+            flash("Please log in first.", "error")
+            return redirect(url_for('login', next=request.path))
+        return f(*args, **kwargs)
+    return wrapper
+
+def roles_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if 'username' not in session:
+                flash("Please log in first.", "error")
+                return redirect(url_for('login'))
+            if session.get('role') not in roles:
+                flash("Access denied: insufficient role.", "error")
+                return redirect(url_for('dashboard'))
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# ---- routes ----
 @app.route('/')
 def home():
     return render_template('home.html')
 
-# Register route
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username'].strip()
         password = request.form['password']
-        hashed_pw = generate_password_hash(password)
+        if not username or not password:
+            flash("Username and password are required.", "error")
+            return redirect(url_for('register'))
 
+        hashed_pw = generate_password_hash(password)
         try:
             cursor.execute(
                 "INSERT INTO users (username, password) VALUES (%s, %s)",
                 (username, hashed_pw)
             )
             db.commit()
-            flash("User registered successfully!", "success")
+            flash("User registered successfully! Please log in.", "success")
             return redirect(url_for('login'))
-        except:
-            flash("Username already exists!", "error")
+        except mysql.connector.Error as e:
+            # likely duplicate username (UNIQUE constraint)
+            flash("Username already exists.", "error")
             return redirect(url_for('register'))
-    
     return render_template('register.html')
 
-# Login route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # if already logged in, skip
+    if 'username' in session:
+        return redirect(url_for('dashboard'))
+
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username'].strip()
         password = request.form['password']
 
         cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
         user = cursor.fetchone()
 
         if user and check_password_hash(user['password'], password):
-            session['username'] = username
-            flash(f"Login successful! Welcome {username}", "success")
-            return redirect(url_for('dashboard'))
+            session['username'] = user['username']
+            session['role'] = user['role'] or 'user'
+            flash(f"Welcome, {user['username']}!", "success")
+            # support ?next=/some/path
+            nxt = request.args.get('next')
+            return redirect(nxt or url_for('dashboard'))
         else:
-            flash("Invalid credentials!", "error")
+            flash("Invalid credentials.", "error")
             return redirect(url_for('login'))
-    
+
     return render_template('login.html')
 
-# Dashboard route
 @app.route('/dashboard')
+@login_required
 def dashboard():
-    if 'username' not in session:
-        flash("Please login first.", "error")
-        return redirect(url_for('login'))
-    return render_template('dashboard.html')
+    return render_template('dashboard.html', username=session.get('username'))
 
-# Logout route
+@app.route('/admin')
+@roles_required('admin')
+def admin_panel():
+    return render_template('admin.html')
+
 @app.route('/logout')
 def logout():
-    session.pop('username', None)
-    flash("Logged out successfully.", "success")
+    session.clear()
+    flash("Logged out.", "success")
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5003)
+    # run on 5003 to match your setup
+    app.run(debug=True, port=5003, host='0.0.0.0')
