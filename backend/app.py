@@ -15,12 +15,18 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s"
 )
 
+# ---------- DB config via environment ----------
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_USER = os.environ.get("DB_USER", "secuser")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "12345678")
+DB_NAME = os.environ.get("DB_NAME", "securedevops")
+
 # ---------- DB connection ----------
 db = mysql.connector.connect(
-    host="localhost",
-    user="secuser",
-    password="12345678",    # <-- your DB password
-    database="securedevops"
+    host=DB_HOST,
+    user=DB_USER,
+    password=DB_PASSWORD,
+    database=DB_NAME
 )
 cursor = db.cursor(dictionary=True)
 
@@ -54,7 +60,7 @@ def validate_username(u: str) -> bool:
     return bool(USERNAME_RE.match(u or ""))
 
 def is_suspicious(text: str) -> bool:
-    if not text: 
+    if not text:
         return False
     # crude tripwires; **not** the primary defense
     patterns = ["'", "\"", ";", "--", "/*", "*/", " OR ", " or ", "#"]
@@ -183,4 +189,6 @@ def logout():
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5003, host='0.0.0.0')
+    # Use env var if set (container), fallback to 5003 for your VM dev
+    port = int(os.environ.get("FLASK_PORT", "5003"))
+    app.run(debug=True, port=port, host='0.0.0.0')
