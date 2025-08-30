@@ -25,7 +25,7 @@ services:
       MYSQL_USER: secuser
       MYSQL_PASSWORD: "12345678"
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - /home/yogita-jain/mysql-init:/docker-entrypoint-initdb.d:ro
