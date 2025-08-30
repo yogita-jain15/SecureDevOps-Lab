@@ -2,7 +2,8 @@ pipeline {
   agent any
 
   environment {
-    COMPOSE_CMD = "docker compose"          // modern compose
+    COMPOSE_CMD = "docker compose"     // modern compose
+    DOCKER_IMAGE = "securedevops-app"  // your app image
   }
 
   stages {
@@ -21,6 +22,15 @@ pipeline {
       }
     }
 
+    stage('Security Scan - Container (Trivy)') {
+      steps {
+        script {
+          // Scan Docker image for CRITICAL/HIGH CVEs
+          sh "trivy image --exit-code 1 --severity CRITICAL,HIGH ${DOCKER_IMAGE} || true"
+        }
+      }
+    }
+
     stage('Deploy (Up)') {
       steps {
         // stop old containers (ignore errors), then start in background
@@ -28,11 +38,21 @@ pipeline {
         sh "${COMPOSE_CMD} up -d"
       }
     }
+
+    stage('Security Scan - App (Nikto)') {
+      steps {
+        script {
+          // Scan running Flask app
+          sh "nikto -h http://127.0.0.1:5000 > security_report.txt || true"
+          archiveArtifacts artifacts: 'security_report.txt', followSymlinks: false
+        }
+      }
+    }
   }
 
   post {
     success {
-      echo "✅ Build & deploy successful"
+      echo "✅ Build, Scan & Deploy successful"
     }
     failure {
       echo "❌ Build failed — check console output"
