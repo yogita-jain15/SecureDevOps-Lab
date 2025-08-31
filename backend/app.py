@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 
 # ---------- DB config via environment ----------
-DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_HOST = os.environ.get("DB_HOST", "mysql")
 DB_USER = os.environ.get("DB_USER", "secuser")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "12345678")
 DB_NAME = os.environ.get("DB_NAME", "securedevops")
@@ -26,7 +26,8 @@ db = mysql.connector.connect(
     host=DB_HOST,
     user=DB_USER,
     password=DB_PASSWORD,
-    database=DB_NAME
+    database=DB_NAME,
+    connection_timeout=20
 )
 cursor = db.cursor(dictionary=True)
 
@@ -191,4 +192,4 @@ def logout():
 if __name__ == '__main__':
     # Use env var if set (container), fallback to 5003 for your VM dev
     port = int(os.environ.get("FLASK_PORT", "5003"))
-    app.run(debug=True, port=port, host='0.0.0.0')
+    app.run(debug=True, port=5000, host='0.0.0.0')

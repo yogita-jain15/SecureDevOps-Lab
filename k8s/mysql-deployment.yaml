@@ -14,8 +14,8 @@ spec:
         app: mysql
     spec:
       containers:
-      - name: mysql
-        image: mysql:8
+      - image: mysql:8
+        name: mysql
         env:
         - name: MYSQL_ROOT_PASSWORD
           value: "rootpass"
@@ -27,9 +27,16 @@ spec:
           value: "StrongPass123"
         ports:
         - containerPort: 3306
+          name: mysql
         volumeMounts:
-        - name: mysql-storage
+        - name: mysql-persistent-storage
           mountPath: /var/lib/mysql
+        - name: mysql-init-script
+          mountPath: /docker-entrypoint-initdb.d/init.sql
+          subPath: init.sql   # important: mount as a single file
       volumes:
-      - name: mysql-storage
-        emptyDir: {}   # ephemeral storage for demo
+      - name: mysql-persistent-storage
+        emptyDir: {}
+      - name: mysql-init-script
+        configMap:
+          name: mysql-init-config
